@@ -113,10 +113,12 @@ def get_file_sha(repo: str, path: str) -> str:
         return ""
 
 
+from google.adk.models.lite_llm import LiteLlm
+
 # Initialize the ADK Agent
 cicd_agent = Agent(
     name="cicd_self_healing_agent",
-    model="gemini-2.5-flash",
+    model=LiteLlm(model="groq/llama-3.3-70b-versatile"),
     instruction="""
     You are an autonomous CI/CD self-healing agent. 
     When a pipeline fails, you are given the repository name and run ID (and optionally the base_sha).
