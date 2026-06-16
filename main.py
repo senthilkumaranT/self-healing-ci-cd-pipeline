@@ -10,12 +10,15 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configure logging
+is_vercel = os.getenv("VERCEL") == "1"
+log_file_path = "/tmp/webhook_server.log" if is_vercel else "webhook_server.log"
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler("webhook_server.log", encoding="utf-8")
+        logging.FileHandler(log_file_path, encoding="utf-8")
     ]
 )
 logger = logging.getLogger("webhook_handler")
@@ -88,6 +91,8 @@ def fetch_and_log_github_failure(repository: str, run_id: str, token: Optional[s
                 
                 # Save the log to a file for analysis
                 log_filename = f"failed_job_{job_id}.log"
+                if is_vercel:
+                    log_filename = f"/tmp/{log_filename}"
                 with open(log_filename, "w", encoding="utf-8") as f:
                     f.write(log_text)
                 logger.info(f"Saved failed job logs to {log_filename}")
