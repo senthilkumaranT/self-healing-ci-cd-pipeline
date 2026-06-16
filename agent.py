@@ -11,6 +11,7 @@ def fetch_run_jobs(repo: str, run_id: str) -> str:
     Fetches the jobs for a specific GitHub Actions workflow run to identify failures.
     Returns the raw job details or error logs as a string.
     """
+    print(f"🤖 AGENT ACTION: Fetching jobs for run {run_id} to read logs...")
     load_dotenv()
     token = os.getenv("GITHUB_TOKEN")
     headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
@@ -29,6 +30,7 @@ def get_file_contents(repo: str, path: str) -> str:
     Fetches the actual source code of a file from the repository.
     Returns the decoded file content as a string.
     """
+    print(f"🤖 AGENT ACTION: Fetching source code for {path}...")
     load_dotenv()
     token = os.getenv("GITHUB_TOKEN")
     headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
@@ -50,6 +52,7 @@ def create_branch(repo: str, base_sha: str, new_branch_name: str) -> str:
     Creates a new git branch pointing to the base_sha.
     Returns a success or failure message.
     """
+    print(f"🤖 AGENT ACTION: Creating new branch {new_branch_name}...")
     load_dotenv()
     token = os.getenv("GITHUB_TOKEN")
     headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
@@ -71,6 +74,7 @@ def update_file(repo: str, path: str, content: str, branch: str, sha: str) -> st
     You must provide the blob sha of the file being replaced.
     Returns a success or failure message.
     """
+    print(f"🤖 AGENT ACTION: Committing fixed code for {path} to branch {branch}...")
     load_dotenv()
     token = os.getenv("GITHUB_TOKEN")
     headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
@@ -95,6 +99,7 @@ def get_file_sha(repo: str, path: str) -> str:
     """
     Gets the blob SHA for a specific file in the repository. This is required before calling update_file.
     """
+    print(f"🤖 AGENT ACTION: Fetching blob SHA for {path}...")
     load_dotenv()
     token = os.getenv("GITHUB_TOKEN")
     headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
