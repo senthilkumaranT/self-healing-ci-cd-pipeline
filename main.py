@@ -104,11 +104,18 @@ WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET")
 
 @app.post("/webhook")
 async def receive_webhook(request: Request, payload: WebhookPayload, background_tasks: BackgroundTasks):
+    logger.info(f"🚀 WEBHOOK TRIGGERED! Pipeline failed for repository: {payload.repo}, Run ID: {payload.run_id}, Branch: {payload.branch}")
+    
     auth = request.headers.get("Authorization")
+    
+    if not WEBHOOK_SECRET:
+        logger.error("CRITICAL: WEBHOOK_SECRET is not set in the environment variables on this server!")
+        
     if auth != f"Bearer {WEBHOOK_SECRET}":
+        logger.warning(f"Unauthorized webhook attempt. Authentication failed.")
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    logger.info(f"Received webhook trigger for repository: {payload.repo}, Run ID: {payload.run_id}, Branch: {payload.branch}")
+    logger.info("✅ Webhook authentication successful. Fetching logs in the background.")
     
     # Process the job logs asynchronously in the background so the webhook response is fast
     background_tasks.add_task(
