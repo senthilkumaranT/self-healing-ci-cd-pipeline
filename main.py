@@ -26,8 +26,9 @@ logger = logging.getLogger("webhook_handler")
 app = FastAPI(title="Self-Healing CI/CD Webhook Receiver")
 
 class WebhookPayload(BaseModel):
-    repository: str  # e.g., "owner/repo"
+    repo: str        # e.g., "owner/repo"
     run_id: str      # e.g., "123456789"
+    branch: Optional[str] = None
     token: Optional[str] = None
 
 def fetch_and_log_github_failure(repository: str, run_id: str, token: Optional[str]):
@@ -102,12 +103,12 @@ def fetch_and_log_github_failure(repository: str, run_id: str, token: Optional[s
 
 @app.post("/webhook")
 async def receive_webhook(payload: WebhookPayload, background_tasks: BackgroundTasks):
-    logger.info(f"Received webhook trigger for repository: {payload.repository}, Run ID: {payload.run_id}")
+    logger.info(f"Received webhook trigger for repository: {payload.repo}, Run ID: {payload.run_id}, Branch: {payload.branch}")
     
     # Process the job logs asynchronously in the background so the webhook response is fast
     background_tasks.add_task(
         fetch_and_log_github_failure,
-        payload.repository,
+        payload.repo,
         payload.run_id,
         payload.token
     )
