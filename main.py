@@ -100,8 +100,11 @@ def fetch_and_log_github_failure(repository: str, run_id: str, head_sha: str = N
                 logger.info("Triggering Google ADK Autonomous Agent for self-healing...")
                 prompt = f"The pipeline failed for repo {repository} on run {run_id}. The base commit SHA for branching is {head_sha}. Please automatically execute your self-healing workflow to fix the bug."
                 try:
-                    response = cicd_agent(prompt)
-                    logger.info(f"Agent Execution Complete. Result: {response}")
+                    import asyncio
+                    from google.adk.runners import InMemoryRunner
+                    runner = InMemoryRunner(agent=cicd_agent)
+                    response_events = asyncio.run(runner.run_debug(prompt))
+                    logger.info(f"Agent Execution Complete. Result: {response_events}")
                 except Exception as e:
                     logger.exception(f"Error executing agent: {e}")
             else:
