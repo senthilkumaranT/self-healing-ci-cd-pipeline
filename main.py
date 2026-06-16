@@ -116,7 +116,7 @@ def fetch_and_log_github_failure(repository: str, run_id: str, head_sha: str = N
 WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET")
 
 @app.post("/webhook")
-async def receive_webhook(request: Request, payload: WebhookPayload, background_tasks: BackgroundTasks):
+async def receive_webhook(request: Request, payload: WebhookPayload):
     logger.info(f"🚀 WEBHOOK TRIGGERED! Pipeline failed for repository: {payload.repo}, Run ID: {payload.run_id}, Branch: {payload.branch}")
     
     auth = request.headers.get("Authorization")
@@ -128,11 +128,10 @@ async def receive_webhook(request: Request, payload: WebhookPayload, background_
         logger.warning(f"Unauthorized webhook attempt. Authentication failed.")
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    logger.info("✅ Webhook authentication successful. Fetching logs in the background.")
+    logger.info("✅ Webhook authentication successful. Fetching logs synchronously to prevent Vercel freeze.")
     
-    # Process the job logs asynchronously in the background so the webhook response is fast
-    background_tasks.add_task(
-        fetch_and_log_github_failure,
+    # Process the job logs BEFORE returning the response
+    fetch_and_log_github_failure(
         payload.repo,
         payload.run_id,
         payload.head_sha
