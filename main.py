@@ -88,19 +88,10 @@ def fetch_and_log_github_failure(repository: str, run_id: str):
                     
                 log_text = logs_response.text
                 
-                # Print/Log the response logs
+                # Print the response logs directly to Vercel logs
                 logger.info(f"=== START OF LOGS FOR JOB: {job_name} ===")
-                # Print to stdout/file
                 print(log_text)
                 logger.info(f"=== END OF LOGS FOR JOB: {job_name} ===")
-                
-                # Save the log to a file for analysis
-                log_filename = f"failed_job_{job_id}.log"
-                if is_vercel:
-                    log_filename = f"/tmp/{log_filename}"
-                with open(log_filename, "w", encoding="utf-8") as f:
-                    f.write(log_text)
-                logger.info(f"Saved failed job logs to {log_filename}")
                 
     except Exception as e:
         logger.exception(f"Error occurred during fetching GitHub Action response: {e}")
