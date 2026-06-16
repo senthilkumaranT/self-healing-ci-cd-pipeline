@@ -5,6 +5,8 @@ from typing import Tuple, Dict
 from dotenv import load_dotenv
 from google.adk.agents import Agent
 
+load_dotenv()
+
 # Tool 1: fetch_run_jobs
 def fetch_run_jobs(repo: str, run_id: str) -> str:
     """
@@ -113,12 +115,10 @@ def get_file_sha(repo: str, path: str) -> str:
         return ""
 
 
-from google.adk.models.lite_llm import LiteLlm
-
 # Initialize the ADK Agent
 cicd_agent = Agent(
     name="cicd_self_healing_agent",
-    model=LiteLlm(model="groq/llama-3.3-70b-versatile"),
+    model="gemini-2.5-flash",
     instruction="""
     You are an autonomous CI/CD self-healing agent. 
     When a pipeline fails, you are given the repository name and run ID (and optionally the base_sha).
@@ -145,6 +145,20 @@ if __name__ == "__main__":
     # Run the agent!
     prompt = f"The pipeline failed for repo {test_repo} on run {test_run_id}. The base commit SHA for branching is {test_head_sha}. Please fix the bug."
     print("Starting Autonomous Workflow...")
-    response = cicd_agent(prompt)
-    print("Workflow Complete!")
-    print(response)
+    
+    import asyncio
+    from google.adk.runners import InMemoryRunner
+    
+    async def run_test():
+        runner = InMemoryRunner(agent=cicd_agent)
+        try:
+            res = await runner.run_debug(prompt)
+            print("Workflow Complete!")
+            for event in res:
+                print(event)
+        except Exception as e:
+            print("Error executing agent:", e)
+            import traceback
+            traceback.print_exc()
+            
+    asyncio.run(run_test())
