@@ -1,7 +1,7 @@
 import os
 import logging
 from typing import Optional
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
 from pydantic import BaseModel
 import httpx
 from dotenv import load_dotenv
@@ -29,16 +29,15 @@ class WebhookPayload(BaseModel):
     repo: str        # e.g., "owner/repo"
     run_id: str      # e.g., "123456789"
     branch: Optional[str] = None
-    token: Optional[str] = None
 
-def fetch_and_log_github_failure(repository: str, run_id: str, token: Optional[str]):
+def fetch_and_log_github_failure(repository: str, run_id: str):
     headers = {
         "Accept": "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28"
     }
     
-    # Use provided token or environment token
-    github_token = token or os.getenv("GITHUB_TOKEN")
+    # Use environment token
+    github_token = os.getenv("GITHUB_TOKEN")
     if github_token:
         headers["Authorization"] = f"Bearer {github_token}"
         logger.info("Using authorization token for GitHub API request.")
@@ -101,16 +100,21 @@ def fetch_and_log_github_failure(repository: str, run_id: str, token: Optional[s
     except Exception as e:
         logger.exception(f"Error occurred during fetching GitHub Action response: {e}")
 
+WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET")
+
 @app.post("/webhook")
-async def receive_webhook(payload: WebhookPayload, background_tasks: BackgroundTasks):
+async def receive_webhook(request: Request, payload: WebhookPayload, background_tasks: BackgroundTasks):
+    auth = request.headers.get("Authorization")
+    if auth != f"Bearer {WEBHOOK_SECRET}":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
     logger.info(f"Received webhook trigger for repository: {payload.repo}, Run ID: {payload.run_id}, Branch: {payload.branch}")
     
     # Process the job logs asynchronously in the background so the webhook response is fast
     background_tasks.add_task(
         fetch_and_log_github_failure,
         payload.repo,
-        payload.run_id,
-        payload.token
+        payload.run_id
     )
     
     return {
