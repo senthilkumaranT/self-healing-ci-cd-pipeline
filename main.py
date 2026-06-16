@@ -7,6 +7,8 @@ from pydantic import BaseModel
 import httpx
 from dotenv import load_dotenv
 
+from agent import cicd_agent
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -30,8 +32,9 @@ class WebhookPayload(BaseModel):
     repo: str        # e.g., "owner/repo"
     run_id: str      # e.g., "123456789"
     branch: Optional[str] = None
+    head_sha: Optional[str] = None
 
-def fetch_and_log_github_failure(repository: str, run_id: str):
+def fetch_and_log_github_failure(repository: str, run_id: str, head_sha: str = None):
     # Wait for the GitHub Action to finish executing and finalize logs
     logger.info(f"Waiting 15 seconds for GitHub Action run {run_id} to fully complete...")
     time.sleep(15)
@@ -93,6 +96,17 @@ def fetch_and_log_github_failure(repository: str, run_id: str):
                 print(log_text)
                 logger.info(f"=== END OF LOGS FOR JOB: {job_name} ===")
                 
+            if head_sha:
+                logger.info("Triggering Google ADK Autonomous Agent for self-healing...")
+                prompt = f"The pipeline failed for repo {repository} on run {run_id}. The base commit SHA for branching is {head_sha}. Please automatically execute your self-healing workflow to fix the bug."
+                try:
+                    response = cicd_agent(prompt)
+                    logger.info(f"Agent Execution Complete. Result: {response}")
+                except Exception as e:
+                    logger.exception(f"Error executing agent: {e}")
+            else:
+                logger.warning("No head_sha provided in webhook payload. Cannot trigger self-healing agent.")
+                
     except Exception as e:
         logger.exception(f"Error occurred during fetching GitHub Action response: {e}")
 
@@ -117,7 +131,8 @@ async def receive_webhook(request: Request, payload: WebhookPayload, background_
     background_tasks.add_task(
         fetch_and_log_github_failure,
         payload.repo,
-        payload.run_id
+        payload.run_id,
+        payload.head_sha
     )
     
     return {
