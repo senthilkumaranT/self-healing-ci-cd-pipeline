@@ -1,4 +1,5 @@
 import os
+import time
 import logging
 from typing import Optional
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
@@ -31,6 +32,10 @@ class WebhookPayload(BaseModel):
     branch: Optional[str] = None
 
 def fetch_and_log_github_failure(repository: str, run_id: str):
+    # Wait for the GitHub Action to finish executing and finalize logs
+    logger.info(f"Waiting 15 seconds for GitHub Action run {run_id} to fully complete...")
+    time.sleep(15)
+
     headers = {
         "Accept": "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28"
