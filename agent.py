@@ -125,6 +125,34 @@ def get_file_sha(repo: str, path: str) -> str:
             return response.json().get("sha", "")
         return ""
 
+# Tool 6: create_pull_request
+def create_pull_request(repo: str, branch: str, base: str, title: str, body: str) -> str:
+    """
+    Creates a new Pull Request on GitHub from the specified branch to the base branch.
+    Returns the URL of the created PR or failure message.
+    """
+    print(f"🤖 AGENT ACTION: Creating Pull Request from {branch} to {base}...")
+    print("⏳ Rate-limiting delay: Sleeping for 30 seconds...")
+    time.sleep(30)
+    load_dotenv()
+    token = os.getenv("GITHUB_TOKEN")
+    headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
+    if token: headers["Authorization"] = f"Bearer {token}"
+
+    url = f"https://api.github.com/repos/{repo}/pulls"
+    payload = {
+        "title": title,
+        "head": branch,
+        "base": base,
+        "body": body
+    }
+    with httpx.Client() as client:
+        response = client.post(url, headers=headers, json=payload)
+        if response.status_code == 201:
+            pr_url = response.json().get("html_url")
+            return f"Successfully created Pull Request: {pr_url}"
+        return f"Error creating Pull Request: HTTP {response.status_code} - {response.text}"
+
 
 # Initialize the ADK Agent
 cicd_agent = Agent(
@@ -142,10 +170,11 @@ cicd_agent = Agent(
     6. Call create_branch(repo, base_sha, branch_name) to create a new branch.
     7. Call get_file_sha(repo, failing_file_path) to get the file's blob SHA.
     8. Call update_file(repo, failing_file_path, fixed_content, branch_name, file_sha) to commit the fix.
+    9. Call create_pull_request(repo, branch_name, "main", "AI Auto-Fix: Resolved CI/CD Pipeline Failure", pr_body) to create a Pull Request. Specify in pr_body the details of the problem and the fix.
     
-    Work step by step and confirm when the fix is fully committed.
+    Work step by step and confirm when the Pull Request is successfully created.
     """,
-    tools=[fetch_run_jobs, get_file_contents, create_branch, update_file, get_file_sha]
+    tools=[fetch_run_jobs, get_file_contents, create_branch, update_file, get_file_sha, create_pull_request]
 )
 
 if __name__ == "__main__":
