@@ -137,6 +137,15 @@ cicd_agent = Agent(
     tools=[fetch_run_jobs, get_file_contents, create_branch, update_file, get_file_sha]
 )
 
+# Initialize the fallback Groq Agent
+from google.adk.models.lite_llm import LiteLlm
+groq_agent = Agent(
+    name="groq_self_healing_agent",
+    model=LiteLlm(model="groq/llama-3.3-70b-versatile"),
+    instruction=cicd_agent.instruction,
+    tools=cicd_agent.tools
+)
+
 if __name__ == "__main__":
     test_repo = "senthilkumaranT/frontend_for_self_healing_cicd"
     test_run_id = "27607186455" 

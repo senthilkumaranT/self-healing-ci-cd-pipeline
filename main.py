@@ -8,7 +8,7 @@ from pydantic import BaseModel
 import httpx
 from dotenv import load_dotenv
 
-from agent import cicd_agent
+from agent import cicd_agent, groq_agent
 
 # Load environment variables from .env file
 load_dotenv()
@@ -111,9 +111,16 @@ async def fetch_and_log_github_failure(repository: str, run_id: str, head_sha: s
                     from google.adk.runners import InMemoryRunner
                     runner = InMemoryRunner(agent=cicd_agent)
                     response_events = await runner.run_debug(prompt)
-                    logger.info(f"Agent Execution Complete. Result: {response_events}")
+                    logger.info(f"Primary Gemini Agent Execution Complete. Result: {response_events}")
                 except Exception as e:
-                    logger.exception(f"Error executing agent: {e}")
+                    logger.warning(f"Primary Gemini Agent failed or hit limit: {e}. Falling back to Groq Agent...")
+                    try:
+                        from google.adk.runners import InMemoryRunner
+                        runner = InMemoryRunner(agent=groq_agent)
+                        response_events = await runner.run_debug(prompt)
+                        logger.info(f"Fallback Groq Agent Execution Complete. Result: {response_events}")
+                    except Exception as fallback_err:
+                        logger.exception(f"Fallback Groq Agent also failed: {fallback_err}")
             else:
                 logger.warning("No head_sha provided in webhook payload. Cannot trigger self-healing agent.")
                 
