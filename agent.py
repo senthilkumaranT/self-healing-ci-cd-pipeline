@@ -153,6 +153,29 @@ def create_pull_request(repo: str, branch: str, base: str, title: str, body: str
             return f"Successfully created Pull Request: {pr_url}"
         return f"Error creating Pull Request: HTTP {response.status_code} - {response.text}"
 
+# Tool 7: list_repository_files
+def list_repository_files(repo: str, branch: str = "main") -> str:
+    """
+    Fetches the recursive list of all file paths in the repository for the specified branch.
+    Returns a string containing the list of all file paths.
+    """
+    print(f"🤖 AGENT ACTION: Listing all files in repository branch {branch}...")
+    print("⏳ Rate-limiting delay: Sleeping for 30 seconds...")
+    time.sleep(30)
+    load_dotenv()
+    token = os.getenv("GITHUB_TOKEN")
+    headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
+    if token: headers["Authorization"] = f"Bearer {token}"
+
+    url = f"https://api.github.com/repos/{repo}/git/trees/{branch}?recursive=1"
+    with httpx.Client() as client:
+        response = client.get(url, headers=headers)
+        if response.status_code == 200:
+            tree = response.json().get("tree", [])
+            file_paths = [item.get("path") for item in tree if item.get("type") == "blob"]
+            return "\n".join(file_paths)
+        return f"Error listing repository files: HTTP {response.status_code} - {response.text}"
+
 
 # Initialize the ADK Agent
 cicd_agent = Agent(
@@ -162,19 +185,21 @@ cicd_agent = Agent(
     You are an autonomous CI/CD self-healing agent. 
     When a pipeline fails, you are given the repository name and run ID (and optionally the base_sha).
     You must automatically execute the following workflow:
-    1. Call fetch_run_jobs(repo, run_id) to read the logs.
-    2. Analyze the logs to identify which file caused the error and what the error is.
-    3. Call get_file_contents(repo, failing_file_path) to get the broken source code.
-    4. Generate a logical fix for the source code.
-    5. Generate a new, descriptive branch name.
-    6. Call create_branch(repo, base_sha, branch_name) to create a new branch.
-    7. Call get_file_sha(repo, failing_file_path) to get the file's blob SHA.
-    8. Call update_file(repo, failing_file_path, fixed_content, branch_name, file_sha) to commit the fix.
-    9. Call create_pull_request(repo, branch_name, "main", "AI Auto-Fix: Resolved CI/CD Pipeline Failure", pr_body) to create a Pull Request. Specify in pr_body the details of the problem and the fix.
+    1. Call list_repository_files(repo) to fetch the entire repository file structure.
+    2. Call fetch_run_jobs(repo, run_id) to read the failure logs.
+    3. Analyze the logs to identify the failing test/file and cross-reference it with the repository structure to get the exact file path.
+    4. Call get_file_contents(repo, failing_file_path) to get the broken source code.
+    5. If the broken code imports or depends on other files (e.g. utility functions, helper components, or configurations) that are relevant to understanding/fixing the bug, call get_file_contents(repo, dependency_path) for those files as well.
+    6. Generate a logical fix for the source code.
+    7. Generate a new, descriptive branch name.
+    8. Call create_branch(repo, base_sha, branch_name) to create a new branch.
+    9. Call get_file_sha(repo, failing_file_path) to get the file's blob SHA.
+    10. Call update_file(repo, failing_file_path, fixed_content, branch_name, file_sha) to commit the fix.
+    11. Call create_pull_request(repo, branch_name, "main", "AI Auto-Fix: Resolved CI/CD Pipeline Failure", pr_body) to create a Pull Request. Specify in pr_body the details of the problem, the fix, and any modified files.
     
     Work step by step and confirm when the Pull Request is successfully created.
     """,
-    tools=[fetch_run_jobs, get_file_contents, create_branch, update_file, get_file_sha, create_pull_request]
+    tools=[fetch_run_jobs, get_file_contents, create_branch, update_file, get_file_sha, create_pull_request, list_repository_files]
 )
 
 if __name__ == "__main__":
