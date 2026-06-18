@@ -34,10 +34,10 @@ class WebhookPayload(BaseModel):
     branch: Optional[str] = None
     head_sha: Optional[str] = None
 
-def fetch_and_log_github_failure(repository: str, run_id: str, head_sha: str = None):
+async def fetch_and_log_github_failure(repository: str, run_id: str, head_sha: str = None):
     # Wait for the GitHub Action to finish executing and finalize logs
     logger.info(f"Waiting 15 seconds for GitHub Action run {run_id} to fully complete...")
-    time.sleep(15)
+    await asyncio.sleep(15)
 
     headers = {
         "Accept": "application/vnd.github+json",
@@ -84,13 +84,20 @@ def fetch_and_log_github_failure(repository: str, run_id: str, head_sha: str = N
                 logs_url = f"https://api.github.com/repos/{repository}/actions/jobs/{job_id}/logs"
                 logger.info(f"Fetching logs from: {logs_url}")
                 
-                logs_response = client.get(logs_url, headers=headers)
-                if logs_response.status_code != 200:
-                    logger.error(f"Failed to fetch logs for job {job_id}: HTTP {logs_response.status_code}")
+                log_text = None
+                for attempt in range(1, 6):
+                    logs_response = client.get(logs_url, headers=headers)
+                    if logs_response.status_code == 200:
+                        log_text = logs_response.text
+                        break
+                    else:
+                        logger.warning(f"Failed to fetch logs for job {job_id} on attempt {attempt}/5: HTTP {logs_response.status_code}. Retrying in 5 seconds...")
+                        await asyncio.sleep(5)
+                
+                if log_text is None:
+                    logger.error(f"Failed to fetch logs for job {job_id} after 5 attempts.")
                     continue
                     
-                log_text = logs_response.text
-                
                 # Print the response logs directly to Vercel logs
                 logger.info(f"=== START OF LOGS FOR JOB: {job_name} ===")
                 print(log_text)
@@ -100,10 +107,9 @@ def fetch_and_log_github_failure(repository: str, run_id: str, head_sha: str = N
                 logger.info("Triggering Google ADK Autonomous Agent for self-healing...")
                 prompt = f"The pipeline failed for repo {repository} on run {run_id}. The base commit SHA for branching is {head_sha}. Please automatically execute your self-healing workflow to fix the bug."
                 try:
-                    import asyncio
                     from google.adk.runners import InMemoryRunner
                     runner = InMemoryRunner(agent=cicd_agent)
-                    response_events = asyncio.run(runner.run_debug(prompt))
+                    response_events = await runner.run_debug(prompt)
                     logger.info(f"Agent Execution Complete. Result: {response_events}")
                 except Exception as e:
                     logger.exception(f"Error executing agent: {e}")
@@ -131,7 +137,7 @@ async def receive_webhook(request: Request, payload: WebhookPayload):
     logger.info("✅ Webhook authentication successful. Fetching logs synchronously to prevent Vercel freeze.")
     
     # Process the job logs BEFORE returning the response
-    fetch_and_log_github_failure(
+    await fetch_and_log_github_failure(
         payload.repo,
         payload.run_id,
         payload.head_sha
