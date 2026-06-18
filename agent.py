@@ -1,6 +1,7 @@
 import os
 import httpx
 import base64
+import time
 from typing import Tuple, Dict
 from dotenv import load_dotenv
 from google.adk.agents import Agent
@@ -14,6 +15,8 @@ def fetch_run_jobs(repo: str, run_id: str) -> str:
     Returns the raw job details or error logs as a string.
     """
     print(f"🤖 AGENT ACTION: Fetching jobs for run {run_id} to read logs...")
+    print("⏳ Rate-limiting delay: Sleeping for 20 seconds...")
+    time.sleep(20)
     load_dotenv()
     token = os.getenv("GITHUB_TOKEN")
     headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
@@ -33,6 +36,8 @@ def get_file_contents(repo: str, path: str) -> str:
     Returns the decoded file content as a string.
     """
     print(f"🤖 AGENT ACTION: Fetching source code for {path}...")
+    print("⏳ Rate-limiting delay: Sleeping for 20 seconds...")
+    time.sleep(20)
     load_dotenv()
     token = os.getenv("GITHUB_TOKEN")
     headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
@@ -55,6 +60,8 @@ def create_branch(repo: str, base_sha: str, new_branch_name: str) -> str:
     Returns a success or failure message.
     """
     print(f"🤖 AGENT ACTION: Creating new branch {new_branch_name}...")
+    print("⏳ Rate-limiting delay: Sleeping for 20 seconds...")
+    time.sleep(20)
     load_dotenv()
     token = os.getenv("GITHUB_TOKEN")
     headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
@@ -77,6 +84,8 @@ def update_file(repo: str, path: str, content: str, branch: str, sha: str) -> st
     Returns a success or failure message.
     """
     print(f"🤖 AGENT ACTION: Committing fixed code for {path} to branch {branch}...")
+    print("⏳ Rate-limiting delay: Sleeping for 20 seconds...")
+    time.sleep(20)
     load_dotenv()
     token = os.getenv("GITHUB_TOKEN")
     headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
@@ -102,6 +111,8 @@ def get_file_sha(repo: str, path: str) -> str:
     Gets the blob SHA for a specific file in the repository. This is required before calling update_file.
     """
     print(f"🤖 AGENT ACTION: Fetching blob SHA for {path}...")
+    print("⏳ Rate-limiting delay: Sleeping for 20 seconds...")
+    time.sleep(20)
     load_dotenv()
     token = os.getenv("GITHUB_TOKEN")
     headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
@@ -137,14 +148,6 @@ cicd_agent = Agent(
     tools=[fetch_run_jobs, get_file_contents, create_branch, update_file, get_file_sha]
 )
 
-# Initialize the fallback Groq Agent
-from google.adk.models.lite_llm import LiteLlm
-groq_agent = Agent(
-    name="groq_self_healing_agent",
-    model=LiteLlm(model="groq/llama-3.3-70b-versatile"),
-    instruction=cicd_agent.instruction,
-    tools=cicd_agent.tools
-)
 
 if __name__ == "__main__":
     test_repo = "senthilkumaranT/frontend_for_self_healing_cicd"
