@@ -118,7 +118,7 @@ def get_file_sha(repo: str, path: str) -> str:
 # Initialize the ADK Agent
 cicd_agent = Agent(
     name="cicd_self_healing_agent",
-    model="gemini-2.5-flash-lite-preview",
+    model="gemini-2.5-flash",
     instruction="""
     You are an autonomous CI/CD self-healing agent. 
     When a pipeline fails, you are given the repository name and run ID (and optionally the base_sha).
