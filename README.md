@@ -1,5 +1,7 @@
 # Self-Healing CI/CD Webhook Receiver (Backend)
 
+![Self-Healing CI/CD High Level Solution Architecture](assets/architecture.png)
+
 An automated backend service that receives GitHub Actions failure webhooks and triggers an autonomous AI agent to diagnose, fix, and open a Pull Request for pipeline failures.
 
 This project is built using **FastAPI** and the **Google ADK (Agent Development Kit)** to facilitate self-healing software development lifecycles.
